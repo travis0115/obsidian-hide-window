@@ -12,6 +12,7 @@ export default class HideWindowPlugin extends Plugin {
   settings: HideWindowSettings;
   private tabCountBefore: number = 0;
   private activeLeafTypeBefore: string = '';
+  private previousActiveLeaf: WorkspaceLeaf | null = null;
   private isInitialized: boolean = false;
 
   async onload() {
@@ -57,16 +58,30 @@ export default class HideWindowPlugin extends Plugin {
     const currentLeaves = this.getTabLeaves();
     const currentTabCount = currentLeaves.length;
 
+    console.log('Tab count changed:', this.tabCountBefore, '->', currentTabCount);
+    console.log('Active leaf type before:', this.activeLeafTypeBefore);
+
     // 检测是否有标签页被关闭
     if (currentTabCount < this.tabCountBefore) {
-      // 有关闭操作发生
+      // 标签页数量减少，有关闭操作发生
       this.handleTabClose();
+    } else if (this.tabCountBefore === 1 && currentTabCount === 1) {
+      // 特殊情况：从 1 个变成 1 个，可能是关闭了最后一个标签页后 Obsidian 自动创建了新的 empty 标签页
+      // 检查 activeLeaf 是否变化
+      const activeLeaf = this.app.workspace.activeLeaf;
+      const currentLeafType = activeLeaf ? this.getLeafType(activeLeaf) : '';
+      
+      if (currentLeafType !== this.activeLeafTypeBefore || activeLeaf !== this.previousActiveLeaf) {
+        console.log('Detected last tab close with auto-created new tab');
+        this.handleTabClose();
+      }
     }
 
     // 更新状态
     this.tabCountBefore = currentTabCount;
     const activeLeaf = this.app.workspace.activeLeaf;
     this.activeLeafTypeBefore = activeLeaf ? this.getLeafType(activeLeaf) : '';
+    this.previousActiveLeaf = activeLeaf;
   }
 
   /**
