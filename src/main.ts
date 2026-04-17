@@ -256,7 +256,11 @@ class HideWindowSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Whether the tab is empty or not')
-      .setDesc('')
+      .setDesc(
+        'Enabled: the window will be hidden when the last tab is closed. (whether the tab is empty or not)\n' +
+        'Disabled: the window will only hide when the last tab is closed and it is an empty tab.\n' +
+        'If you are accustomed to using only one tab, enabling this option will be more in line with the logic of use.'
+      )
       .addToggle(toggle => toggle
         .setValue(this.plugin.settings.hideOnAnyTabClose)
         .onChange(async (value) => {
@@ -265,29 +269,11 @@ class HideWindowSettingTab extends PluginSettingTab {
         })
       );
     
-    // 添加详细说明
-    const detailEl = containerEl.createEl('div');
-    detailEl.style.marginTop = '10px';
-    detailEl.style.marginBottom = '10px';
-    detailEl.style.color = 'var(--text-muted)';
-    
-    detailEl.createEl('p', {
-      text: 'Enabled: the window will be hidden when the last tab is closed. (whether the tab is empty or not)'
-    });
-    
-    detailEl.createEl('p', {
-      text: 'Disabled: the window will only hide when the last tab is closed and it is an empty tab.'
-    });
-    
-    detailEl.createEl('p', {
-      text: 'If you are accustomed to using only one tab, enabling this option will be more in line with the logic of use.'
-    });
-
     const authorEl = containerEl.createEl('p', {
       text: 'Author: Travis (travis0115@163.com)'
     });
     authorEl.style.color = 'var(--text-muted)';
     authorEl.style.textAlign = 'right';
-    authorEl.style.fontSize = 'var(--font-ui-smaller)';
+    authorEl.style.fontSize = 'var(--font-ui-small)';
   }
 }
