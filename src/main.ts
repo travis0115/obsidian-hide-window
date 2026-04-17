@@ -14,7 +14,6 @@ export default class HideWindowPlugin extends Plugin {
   private activeLeafTypeBefore: string = '';
   private previousActiveLeaf: WorkspaceLeaf | null = null;
   private isInitialized: boolean = false;
-  private shouldProcessClose: boolean = true; // 是否应该处理关闭事件
 
   async onload() {
     await this.loadSettings();
@@ -53,22 +52,6 @@ export default class HideWindowPlugin extends Plugin {
   private handleLayoutChange(): void {
     if (!this.isInitialized) {
       this.initializeState();
-      // 初始化后，跳过第一次 layout-change 事件
-      this.shouldProcessClose = false;
-      setTimeout(() => {
-        this.shouldProcessClose = true;
-      }, 500);
-      return;
-    }
-
-    // 如果不应该处理关闭事件，直接返回
-    if (!this.shouldProcessClose) {
-      // 仍然更新状态
-      const currentLeaves = this.getTabLeaves();
-      this.tabCountBefore = currentLeaves.length;
-      const activeLeaf = this.app.workspace.activeLeaf;
-      this.activeLeafTypeBefore = activeLeaf ? this.getLeafType(activeLeaf) : '';
-      this.previousActiveLeaf = activeLeaf;
       return;
     }
 
@@ -84,12 +67,13 @@ export default class HideWindowPlugin extends Plugin {
       this.handleTabClose();
     } else if (this.tabCountBefore === 1 && currentTabCount === 1) {
       // 特殊情况：从 1 个变成 1 个，可能是关闭了最后一个标签页后 Obsidian 自动创建了新的 empty 标签页
-      // 检查 activeLeaf 是否变化
+      // 只有当关闭前的标签页不是 empty,而现在变成 empty 时,才认为是关闭操作
       const activeLeaf = this.app.workspace.activeLeaf;
       const currentLeafType = activeLeaf ? this.getLeafType(activeLeaf) : '';
       
-      if (currentLeafType !== this.activeLeafTypeBefore || activeLeaf !== this.previousActiveLeaf) {
-        console.log('Detected last tab close with auto-created new tab');
+      // 关闭前不是 empty,关闭后变成 empty = 真正的关闭操作
+      if (this.activeLeafTypeBefore !== 'empty' && currentLeafType === 'empty') {
+        console.log('Detected last tab close: content -> empty');
         this.handleTabClose();
       }
     }
