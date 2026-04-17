@@ -106,10 +106,15 @@ export default class HideWindowPlugin extends Plugin {
    * 获取所有标签页的 Leaf
    */
   private getTabLeaves(): WorkspaceLeaf[] {
-    // 获取所有标签页，包括 markdown 和 empty 类型
-    const allLeaves = this.app.workspace.getLeavesOfType('tab');
-    console.log('Total tab leaves:', allLeaves.length);
-    return allLeaves;
+    // 使用 workspace.rootTab.children 获取所有标签页
+    const rootTab = (this.app.workspace as any).rootTab;
+    if (rootTab && rootTab.children) {
+      const leaves = rootTab.children;
+      console.log('Total tab leaves:', leaves.length);
+      return leaves;
+    }
+    console.log('Total tab leaves: 0');
+    return [];
   }
 
   /**
