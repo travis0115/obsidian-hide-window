@@ -69,14 +69,14 @@ export default class HideWindowPlugin extends Plugin {
       this.handleTabClose();
     } else if (this.tabCountBefore === 1 && currentTabCount === 1) {
       // 特殊情况：从 1 个变成 1 个，可能是关闭了最后一个标签页后 Obsidian 自动创建了新的 empty 标签页
-      // 只有当关闭前的标签页不是 empty,而现在变成 empty 时,才认为是关闭操作
+      // 检查 activeLeaf 是否变化（对象不同，说明是新建的标签页）
       // @ts-ignore - activeLeaf is deprecated but still works
       const activeLeaf = this.app.workspace.activeLeaf;
       const currentLeafType = activeLeaf ? this.getLeafType(activeLeaf) : '';
       
-      // 关闭前不是 empty,关闭后变成 empty = 真正的关闭操作
-      if (this.activeLeafTypeBefore !== 'empty' && currentLeafType === 'empty') {
-        console.log('Detected last tab close: content -> empty');
+      // 如果 activeLeaf 对象发生变化，说明关闭了旧标签页，创建了新的
+      if (activeLeaf !== this.previousActiveLeaf) {
+        console.log('Detected last tab close: leaf object changed');
         this.handleTabClose();
       }
     }
