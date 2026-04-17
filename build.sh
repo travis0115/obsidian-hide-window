@@ -16,14 +16,28 @@ npm run build
 
 if [ $? -eq 0 ]; then
     echo ""
+    echo "📦 Creating distribution package..."
+    
+    # 创建 dist 目录
+    rm -rf dist
+    mkdir -p dist/obsidian-hide-window
+    
+    # 复制必要的文件到 dist
+    cp main.js dist/obsidian-hide-window/
+    cp manifest.json dist/obsidian-hide-window/
+    cp versions.json dist/obsidian-hide-window/
+    
+    echo ""
     echo "✅ Build successful!"
     echo ""
-    echo "📁 Generated files:"
-    echo "   - main.js"
-    echo "   - manifest.json"
+    echo "📁 Distribution files:"
+    echo "   dist/obsidian-hide-window/"
+    echo "   ├── main.js"
+    echo "   ├── manifest.json"
+    echo "   └── versions.json"
     echo ""
     echo "📋 To install the plugin:"
-    echo "   1. Copy the entire 'obsidian-hide-window' folder to:"
+    echo "   1. Copy the 'dist/obsidian-hide-window' folder to:"
     echo "      YourVault/.obsidian/plugins/"
     echo "   2. Reload Obsidian"
     echo "   3. Enable the plugin in Settings → Community Plugins"

@@ -89,15 +89,15 @@ export default class HideWindowPlugin extends Plugin {
   }
 
   /**
-   * 隐藏 Obsidian 窗口
+   * 隐藏 Obsidian 窗口 (等同于 Cmd+H)
    */
   private hideWindow(): void {
     const electron = (window as any).require('electron');
     if (electron && electron.remote) {
-      const currentWindow = electron.remote.getCurrentWindow();
-      if (currentWindow) {
-        currentWindow.hide();
-        console.log('Window hidden by Hide Window plugin');
+      const app = electron.remote.app;
+      if (app) {
+        app.hide();
+        console.log('Window hidden by Hide Window plugin (app.hide)');
       }
     }
   }

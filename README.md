@@ -55,6 +55,8 @@ npm run build
 ./build.sh
 ```
 
+构建完成后,会在 `dist/obsidian-hide-window/` 目录下生成可直接安装的插件文件。
+
 ### 开发模式(自动监听)
 
 ```bash
@@ -67,13 +69,18 @@ npm run dev
 obsidian-hide-window/
 ├── src/
 │   └── main.ts              # 插件源代码
-├── main.js                  # 编译后的插件文件
+├── main.js                  # 编译后的插件文件(构建生成)
 ├── manifest.json            # 插件清单文件
 ├── package.json             # Node.js 配置
 ├── tsconfig.json            # TypeScript 配置
 ├── esbuild.config.mjs       # 构建配置
 ├── versions.json            # 版本兼容性
 ├── build.sh                 # 一键构建脚本
+├── dist/                    # 构建输出目录(可直接安装)
+│   └── obsidian-hide-window/
+│       ├── main.js
+│       ├── manifest.json
+│       └── versions.json
 ├── .gitignore               # Git 忽略文件
 └── README.md                # 说明文档
 ```
