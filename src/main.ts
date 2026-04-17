@@ -108,11 +108,30 @@ export default class HideWindowPlugin extends Plugin {
   private getTabLeaves(): WorkspaceLeaf[] {
     const leaves: WorkspaceLeaf[] = [];
     
-    // 使用 iterateAllLeaves 遍历所有 leaf
-    this.app.workspace.iterateAllLeaves((leaf) => {
-      leaves.push(leaf);
-      return false; // 继续遍历
-    });
+    // 尝试使用 iterateRootLeaves
+    const workspace = this.app.workspace as any;
+    
+    // 方法1: 尝试 iterateRootLeaves
+    if (workspace.iterateRootLeaves) {
+      workspace.iterateRootLeaves((leaf: WorkspaceLeaf) => {
+        leaves.push(leaf);
+      });
+    }
+    // 方法2: 使用 floatingSplit 获取
+    else if (workspace.floatingSplit) {
+      const collectLeaves = (split: any) => {
+        if (split.children) {
+          split.children.forEach((child: any) => {
+            if (child.type === 'leaf' && child.leaf) {
+              leaves.push(child.leaf);
+            } else if (child.children) {
+              collectLeaves(child);
+            }
+          });
+        }
+      };
+      collectLeaves(workspace.floatingSplit);
+    }
     
     console.log('Total tab leaves:', leaves.length);
     return leaves;
