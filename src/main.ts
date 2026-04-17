@@ -106,20 +106,26 @@ export default class HideWindowPlugin extends Plugin {
    * 获取所有标签页的 Leaf
    */
   private getTabLeaves(): WorkspaceLeaf[] {
-    return this.app.workspace.getLeavesOfType('markdown');
+    // 获取所有标签页，包括 markdown 和 empty 类型
+    const allLeaves = this.app.workspace.getLeavesOfType('tab');
+    console.log('Total tab leaves:', allLeaves.length);
+    return allLeaves;
   }
 
   /**
    * 获取 Leaf 的类型
    */
   private getLeafType(leaf: WorkspaceLeaf): string {
+    const viewType = leaf.view ? leaf.view.getViewType() : 'empty';
+    console.log('Leaf view type:', viewType);
+    
     // 检查是否为空标签页
-    if (!leaf.view || leaf.view.getViewType() === 'empty') {
+    if (viewType === 'empty') {
       return 'empty';
     }
     
     // 检查是否为 markdown 视图但没有文件
-    if (leaf.view.getViewType() === 'markdown') {
+    if (viewType === 'markdown') {
       const file = (leaf.view as any).file;
       if (!file) {
         return 'empty';
