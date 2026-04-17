@@ -41,8 +41,10 @@ export default class HideWindowPlugin extends Plugin {
     const leaves = this.getTabLeaves();
     this.tabCountBefore = leaves.length;
     
+    // @ts-ignore - activeLeaf is deprecated but still works
     const activeLeaf = this.app.workspace.activeLeaf;
     this.activeLeafTypeBefore = activeLeaf ? this.getLeafType(activeLeaf) : '';
+    this.previousActiveLeaf = activeLeaf;
     this.isInitialized = true;
   }
 
@@ -68,6 +70,7 @@ export default class HideWindowPlugin extends Plugin {
     } else if (this.tabCountBefore === 1 && currentTabCount === 1) {
       // 特殊情况：从 1 个变成 1 个，可能是关闭了最后一个标签页后 Obsidian 自动创建了新的 empty 标签页
       // 只有当关闭前的标签页不是 empty,而现在变成 empty 时,才认为是关闭操作
+      // @ts-ignore - activeLeaf is deprecated but still works
       const activeLeaf = this.app.workspace.activeLeaf;
       const currentLeafType = activeLeaf ? this.getLeafType(activeLeaf) : '';
       
@@ -80,6 +83,7 @@ export default class HideWindowPlugin extends Plugin {
 
     // 更新状态
     this.tabCountBefore = currentTabCount;
+    // @ts-ignore - activeLeaf is deprecated but still works
     const activeLeaf = this.app.workspace.activeLeaf;
     this.activeLeafTypeBefore = activeLeaf ? this.getLeafType(activeLeaf) : '';
     this.previousActiveLeaf = activeLeaf;
