@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-hide-window",
+  "name": "Hide Window",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Automatically hide the Obsidian window when closing tabs.",
+  "author": "Travis（travis0115@163.com）",
+  "authorUrl": "",
+  "isDesktopOnly": true
+}
