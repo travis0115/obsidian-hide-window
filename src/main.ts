@@ -247,13 +247,21 @@ class HideWindowSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
+    // 插件说明
+    const descEl = containerEl.createEl('p', {
+      text: 'Automatically hide the Obsidian window when closing tabs.'
+    });
+    descEl.style.marginBottom = '10px';
+    
+    const authorEl = containerEl.createEl('p', {
+      text: 'Author: Travis (travis0115@163.com)'
+    });
+    authorEl.style.marginBottom = '20px';
+    authorEl.style.color = 'var(--text-muted)';
+
     new Setting(containerEl)
       .setName('Whether the tab is empty or not')
-      .setDesc(
-        'When enabled, the window will be hidden when the last tab is closed. (whether the tab is empty or not)\n' +
-        'When disabled, the window will only be hidden when the last empty tab is closed.\n' +
-        'If you are accustomed to using only one tab, enabling this option will be more in line with the logic of use.'
-      )
+      .setDesc('')
       .addToggle(toggle => toggle
         .setValue(this.plugin.settings.hideOnAnyTabClose)
         .onChange(async (value) => {
@@ -261,5 +269,23 @@ class HideWindowSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         })
       );
+    
+    // 添加详细说明
+    const detailEl = containerEl.createEl('div');
+    detailEl.style.marginTop = '10px';
+    detailEl.style.color = 'var(--text-muted)';
+    detailEl.style.fontSize = 'var(--font-ui-smaller)';
+    
+    detailEl.createEl('p', {
+      text: 'When enabled, the window will be hidden when the last tab is closed. (whether the tab is empty or not)'
+    });
+    
+    detailEl.createEl('p', {
+      text: 'When disabled, the window will only be hidden when the last empty tab is closed.'
+    });
+    
+    detailEl.createEl('p', {
+      text: 'If you are accustomed to using only one tab, enabling this option will be more in line with the logic of use.'
+    });
   }
 }
