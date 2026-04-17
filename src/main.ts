@@ -106,15 +106,16 @@ export default class HideWindowPlugin extends Plugin {
    * 获取所有标签页的 Leaf
    */
   private getTabLeaves(): WorkspaceLeaf[] {
-    // 使用 workspace.rootTab.children 获取所有标签页
-    const rootTab = (this.app.workspace as any).rootTab;
-    if (rootTab && rootTab.children) {
-      const leaves = rootTab.children;
-      console.log('Total tab leaves:', leaves.length);
-      return leaves;
-    }
-    console.log('Total tab leaves: 0');
-    return [];
+    const leaves: WorkspaceLeaf[] = [];
+    
+    // 使用 iterateAllLeaves 遍历所有 leaf
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      leaves.push(leaf);
+      return false; // 继续遍历
+    });
+    
+    console.log('Total tab leaves:', leaves.length);
+    return leaves;
   }
 
   /**
