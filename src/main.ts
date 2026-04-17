@@ -63,10 +63,13 @@ export default class HideWindowPlugin extends Plugin {
     console.log('Tab count changed:', this.tabCountBefore, '->', currentTabCount);
     console.log('Active leaf type before:', this.activeLeafTypeBefore);
 
-    // 检测是否有标签页被关闭
+    // 只处理标签页数量减少的情况（关闭标签页）
     if (currentTabCount < this.tabCountBefore) {
-      // 标签页数量减少，有关闭操作发生
-      this.handleTabClose();
+      console.log('Tab closed, checking if should hide window...');
+      // 只有当关闭前只有1个标签页时才可能触发隐藏
+      if (this.tabCountBefore === 1) {
+        this.handleTabClose();
+      }
     } else if (this.tabCountBefore === 1 && currentTabCount === 1) {
       // 特殊情况：从 1 个变成 1 个，可能是关闭了最后一个标签页后 Obsidian 自动创建了新的 empty 标签页
       // 检查 activeLeaf 是否变化（对象不同，说明是新建的标签页）
