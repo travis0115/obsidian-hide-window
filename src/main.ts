@@ -14,6 +14,7 @@ export default class HideWindowPlugin extends Plugin {
   private activeLeafTypeBefore: string = '';
   private previousActiveLeaf: WorkspaceLeaf | null = null;
   private isInitialized: boolean = false;
+  private shouldProcessClose: boolean = true; // 是否应该处理关闭事件
 
   async onload() {
     await this.loadSettings();
@@ -52,6 +53,22 @@ export default class HideWindowPlugin extends Plugin {
   private handleLayoutChange(): void {
     if (!this.isInitialized) {
       this.initializeState();
+      // 初始化后，跳过第一次 layout-change 事件
+      this.shouldProcessClose = false;
+      setTimeout(() => {
+        this.shouldProcessClose = true;
+      }, 500);
+      return;
+    }
+
+    // 如果不应该处理关闭事件，直接返回
+    if (!this.shouldProcessClose) {
+      // 仍然更新状态
+      const currentLeaves = this.getTabLeaves();
+      this.tabCountBefore = currentLeaves.length;
+      const activeLeaf = this.app.workspace.activeLeaf;
+      this.activeLeafTypeBefore = activeLeaf ? this.getLeafType(activeLeaf) : '';
+      this.previousActiveLeaf = activeLeaf;
       return;
     }
 
@@ -88,16 +105,25 @@ export default class HideWindowPlugin extends Plugin {
    * 处理标签页关闭逻辑
    */
   private handleTabClose(): void {
-    // 如果关闭前有1个标签页，现在变为0个
-    if (this.tabCountBefore === 1 && this.getTabLeaves().length === 0) {
+    console.log('handleTabClose called, tabCountBefore:', this.tabCountBefore, 'activeLeafTypeBefore:', this.activeLeafTypeBefore);
+      
+    // 如果关闭前有1个标签页
+    if (this.tabCountBefore === 1) {
+      console.log('Last tab was closed. Option hideOnAnyTabClose:', this.settings.hideOnAnyTabClose);
+        
       // 检查选项设置
       if (this.settings.hideOnAnyTabClose) {
-        // 选项开启：无论什么类型的标签页都隐藏窗口
+        // 选项开启:无论什么类型的标签页都隐藏窗口
+        console.log('Option enabled, hiding window for any tab type');
         this.hideWindow();
       } else {
-        // 选项关闭：只有空标签页才隐藏窗口
+        // 选项关闭:只有空标签页才隐藏窗口
+        console.log('Option disabled, checking if last tab was empty...');
         if (this.activeLeafTypeBefore === 'empty') {
+          console.log('Last tab was empty, hiding window');
           this.hideWindow();
+        } else {
+          console.log('Last tab had content, not hiding window');
         }
       }
     }
@@ -107,13 +133,47 @@ export default class HideWindowPlugin extends Plugin {
    * 隐藏 Obsidian 窗口 (等同于 Cmd+H)
    */
   private hideWindow(): void {
-    const electron = (window as any).require('electron');
-    if (electron && electron.remote) {
-      const app = electron.remote.app;
-      if (app) {
-        app.hide();
-        console.log('Window hidden by Hide Window plugin (app.hide)');
+    console.log('hideWindow() called');
+    try {
+      const electron = (window as any).require('electron');
+      console.log('electron module:', electron ? 'loaded' : 'not loaded');
+      
+      if (electron && electron.remote) {
+        console.log('electron.remote available');
+        
+        // 方法1: 使用 app.hide() - macOS 等同于 Cmd+H
+        const app = electron.remote.app;
+        if (app) {
+          console.log('Calling app.hide()');
+          app.hide();
+          console.log('Window hidden via app.hide()');
+          return;
+        }
+        
+        // 方法2: 使用 BrowserWindow.getFocusedWindow()?.hide()
+        const BrowserWindow = electron.remote.BrowserWindow;
+        if (BrowserWindow) {
+          const currentWindow = BrowserWindow.getFocusedWindow();
+          if (currentWindow) {
+            console.log('Calling BrowserWindow.getFocusedWindow().hide()');
+            currentWindow.hide();
+            console.log('Window hidden via BrowserWindow.getFocusedWindow().hide()');
+            return;
+          }
+        }
+        
+        // 方法3: 使用 getCurrentWindow()
+        const currentWindow = electron.remote.getCurrentWindow();
+        if (currentWindow) {
+          console.log('Calling getCurrentWindow().hide()');
+          currentWindow.hide();
+          console.log('Window hidden via getCurrentWindow().hide()');
+        }
+      } else {
+        console.log('electron.remote not available');
       }
+    } catch (error) {
+      console.error('hideWindow error:', error);
     }
   }
 
