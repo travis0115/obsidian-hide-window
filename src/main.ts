@@ -57,7 +57,7 @@ export default class HideWindowPlugin extends Plugin {
 
         const currentLeaves = this.getTabLeaves();
         const currentTabCount = currentLeaves.length;
-        
+
         // 只处理标签页数量减少的情况(关闭标签页)
         if (currentTabCount < this.tabCountBefore) {
             // 只有当关闭前只有1个标签页时才可能触发隐藏
@@ -66,13 +66,18 @@ export default class HideWindowPlugin extends Plugin {
             }
         } else if (this.tabCountBefore === 1 && currentTabCount === 1) {
             // 特殊情况:从 1 个变成 1 个,可能是关闭了最后一个标签页后 Obsidian 自动创建了新的 empty 标签页
-            // 检查 activeLeaf 是否变化(对象不同,说明是新建的标签页)
             // @ts-ignore - activeLeaf is deprecated but still works
             const activeLeaf = this.app.workspace.activeLeaf;
-            const currentLeafType = activeLeaf ? this.getLeafType(activeLeaf) : '';
-        
-            // 如果 activeLeaf 对象发生变化,说明关闭了旧标签页,创建了新的
-            if (activeLeaf !== this.previousActiveLeaf) {
+
+            // 关键修复:如果 previousActiveLeaf 仍存在于主编辑区标签页中,
+            // 说明原标签页并未被关闭(例如用户只是点击了左侧边栏的搜索/标签按钮,
+            // 导致全局 activeLeaf 切到侧边栏 leaf,而主编辑区标签页原封不动),
+            // 此时不应触发隐藏。
+            const prevStillInRoot = this.previousActiveLeaf !== null
+                && currentLeaves.indexOf(this.previousActiveLeaf) !== -1;
+
+            // 仅当原主区域标签页已不在 && activeLeaf 对象变化时,才认为是"关闭最后一个标签+自动新建 empty"
+            if (!prevStillInRoot && activeLeaf !== this.previousActiveLeaf) {
                 this.handleTabClose();
             }
         }
@@ -82,7 +87,12 @@ export default class HideWindowPlugin extends Plugin {
         // @ts-ignore - activeLeaf is deprecated but still works
         const activeLeaf = this.app.workspace.activeLeaf;
         this.activeLeafTypeBefore = activeLeaf ? this.getLeafType(activeLeaf) : '';
-        this.previousActiveLeaf = activeLeaf;
+        // 关键修复:仅当 activeLeaf 属于主编辑区(根区域)时才更新 previousActiveLeaf,
+        // 避免点击侧边栏按钮导致 previousActiveLeaf 被侧边栏 leaf 污染,
+        // 进而影响后续对"标签页是否真被关闭"的判断。
+        if (activeLeaf && currentLeaves.indexOf(activeLeaf) !== -1) {
+            this.previousActiveLeaf = activeLeaf;
+        }
     }
 
     /**
