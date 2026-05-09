@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
+import { App, FileView, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
 
 interface HideWindowSettings {
     hideOnAnyTabClose: boolean;
@@ -8,12 +8,28 @@ const DEFAULT_SETTINGS: HideWindowSettings = {
     hideOnAnyTabClose: true
 };
 
+interface ElectronWindowLike {
+    hide(): void;
+}
+
+interface ElectronRemoteLike {
+    app?: { hide(): void };
+    BrowserWindow?: { getFocusedWindow(): ElectronWindowLike | null };
+    getCurrentWindow?(): ElectronWindowLike | null;
+}
+
+interface ElectronModuleLike {
+    remote?: ElectronRemoteLike;
+}
+
+type RequireFn = (id: string) => unknown;
+
 export default class HideWindowPlugin extends Plugin {
     settings: HideWindowSettings;
-    private tabCountBefore: number = 0;
-    private activeLeafTypeBefore: string = '';
+    private tabCountBefore = 0;
+    private activeLeafTypeBefore = '';
     private previousActiveLeaf: WorkspaceLeaf | null = null;
-    private isInitialized: boolean = false;
+    private isInitialized = false;
 
     async onload() {
         await this.loadSettings();
@@ -21,7 +37,7 @@ export default class HideWindowPlugin extends Plugin {
         // 初始化时记录当前状态
         this.initializeState();
 
-        // 监听标签页关闭事件
+        // 监听布局变化（包含标签页关闭）
         this.registerEvent(
             this.app.workspace.on('layout-change', () => {
                 this.handleLayoutChange();
@@ -39,8 +55,7 @@ export default class HideWindowPlugin extends Plugin {
         const leaves = this.getTabLeaves();
         this.tabCountBefore = leaves.length;
 
-        // @ts-ignore - activeLeaf is deprecated but still works
-        const activeLeaf = this.app.workspace.activeLeaf;
+        const activeLeaf = this.app.workspace.getMostRecentLeaf();
         this.activeLeafTypeBefore = activeLeaf ? this.getLeafType(activeLeaf) : '';
         this.previousActiveLeaf = activeLeaf;
         this.isInitialized = true;
@@ -66,8 +81,7 @@ export default class HideWindowPlugin extends Plugin {
             }
         } else if (this.tabCountBefore === 1 && currentTabCount === 1) {
             // 特殊情况:从 1 个变成 1 个,可能是关闭了最后一个标签页后 Obsidian 自动创建了新的 empty 标签页
-            // @ts-ignore - activeLeaf is deprecated but still works
-            const activeLeaf = this.app.workspace.activeLeaf;
+            const activeLeaf = this.app.workspace.getMostRecentLeaf();
 
             // 关键修复:如果 previousActiveLeaf 仍存在于主编辑区标签页中,
             // 说明原标签页并未被关闭(例如用户只是点击了左侧边栏的搜索/标签按钮,
@@ -84,8 +98,7 @@ export default class HideWindowPlugin extends Plugin {
 
         // 更新状态
         this.tabCountBefore = currentTabCount;
-        // @ts-ignore - activeLeaf is deprecated but still works
-        const activeLeaf = this.app.workspace.activeLeaf;
+        const activeLeaf = this.app.workspace.getMostRecentLeaf();
         // 关键修复:仅当 activeLeaf 属于主编辑区(根区域)时才更新 previousActiveLeaf 与 activeLeafTypeBefore,
         // 避免点击侧边栏按钮(如搜索/标签)导致状态被侧边栏 leaf 污染。
         // 尤其对 activeLeafTypeBefore: 若被侧边栏 leaf 污染为 'content',
@@ -121,31 +134,34 @@ export default class HideWindowPlugin extends Plugin {
      */
     private hideWindow(): void {
         try {
-            const electron = (window as any).require('electron');
+            const requireFn = (window as unknown as { require?: RequireFn }).require;
+            if (typeof requireFn !== 'function') {
+                return;
+            }
 
-            if (electron && electron.remote) {
-                // 方法1: 使用 app.hide() - macOS 等同于 Cmd+H
-                const app = electron.remote.app;
-                if (app) {
-                    app.hide();
-                    return;
-                }
+            const electron = requireFn('electron') as ElectronModuleLike | undefined;
+            const remote = electron?.remote;
+            if (!remote) {
+                return;
+            }
 
-                // 方法2: 使用 BrowserWindow.getFocusedWindow()?.hide()
-                const BrowserWindow = electron.remote.BrowserWindow;
-                if (BrowserWindow) {
-                    const currentWindow = BrowserWindow.getFocusedWindow();
-                    if (currentWindow) {
-                        currentWindow.hide();
-                        return;
-                    }
-                }
+            // 方法1: 使用 app.hide() - macOS 等同于 Cmd+H
+            if (remote.app) {
+                remote.app.hide();
+                return;
+            }
 
-                // 方法3: 使用 getCurrentWindow()
-                const currentWindow = electron.remote.getCurrentWindow();
-                if (currentWindow) {
-                    currentWindow.hide();
-                }
+            // 方法2: 使用 BrowserWindow.getFocusedWindow()?.hide()
+            const focused = remote.BrowserWindow?.getFocusedWindow();
+            if (focused) {
+                focused.hide();
+                return;
+            }
+
+            // 方法3: 使用 getCurrentWindow()
+            const currentWindow = remote.getCurrentWindow?.();
+            if (currentWindow) {
+                currentWindow.hide();
             }
         } catch (error) {
             console.error('Hide Window: Failed to hide window', error);
@@ -153,36 +169,13 @@ export default class HideWindowPlugin extends Plugin {
     }
 
     /**
-     * 获取所有标签页的 Leaf
+     * 获取所有主编辑区标签页的 Leaf
      */
     private getTabLeaves(): WorkspaceLeaf[] {
         const leaves: WorkspaceLeaf[] = [];
-
-        // 尝试使用 iterateRootLeaves
-        const workspace = this.app.workspace as any;
-
-        // 方法1: 尝试 iterateRootLeaves
-        if (workspace.iterateRootLeaves) {
-            workspace.iterateRootLeaves((leaf: WorkspaceLeaf) => {
-                leaves.push(leaf);
-            });
-        }
-        // 方法2: 使用 floatingSplit 获取
-        else if (workspace.floatingSplit) {
-            const collectLeaves = (split: any) => {
-                if (split.children) {
-                    split.children.forEach((child: any) => {
-                        if (child.type === 'leaf' && child.leaf) {
-                            leaves.push(child.leaf);
-                        } else if (child.children) {
-                            collectLeaves(child);
-                        }
-                    });
-                }
-            };
-            collectLeaves(workspace.floatingSplit);
-        }
-
+        this.app.workspace.iterateRootLeaves((leaf) => {
+            leaves.push(leaf);
+        });
         return leaves;
     }
 
@@ -192,24 +185,22 @@ export default class HideWindowPlugin extends Plugin {
     private getLeafType(leaf: WorkspaceLeaf): string {
         const viewType = leaf.view ? leaf.view.getViewType() : 'empty';
 
-        // 检查是否为空标签页
+        // 空标签页
         if (viewType === 'empty') {
             return 'empty';
         }
 
-        // 检查是否为 markdown 视图但没有文件
-        if (viewType === 'markdown') {
-            const file = (leaf.view as any).file;
-            if (!file) {
-                return 'empty';
-            }
+        // 文件视图但没有绑定文件,同样视为空
+        if (leaf.view instanceof FileView && !leaf.view.file) {
+            return 'empty';
         }
 
         return 'content';
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const data = (await this.loadData()) as Partial<HideWindowSettings> | null;
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
     }
 
     async saveSettings() {
@@ -231,18 +222,12 @@ class HideWindowSettingTab extends PluginSettingTab {
 
         // 插件说明
         const descEl = containerEl.createEl('p', {
-            text: 'Automatically hide the obsidian window when closing last tag.'
+            text: 'Automatically hide the Obsidian window when closing the last tab.'
         });
-        descEl.style.marginBottom = '10px';
-
+        descEl.addClass('hide-window-setting-desc');
 
         const setting = new Setting(containerEl)
             .setName('Whether the tab is empty or not')
-            .setDesc(
-                '   ' +
-                '   ' +
-                ''
-            )
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.hideOnAnyTabClose)
                 .onChange(async (value) => {
@@ -253,16 +238,16 @@ class HideWindowSettingTab extends PluginSettingTab {
 
         const settingDescEl = setting.descEl;
         settingDescEl.empty();
-        settingDescEl.createEl('p', { text: 'Enabled: the window will be hidden regardless of whether it is empty.'});
-        settingDescEl.createEl('p', { text: 'Disabled: the window will be hidden only when the last tab is empty.'});
-        settingDescEl.createEl('p', { text: 'If you are accustomed to using only one tab, enabling this option will be more in line with the logic of use.' })
-            .style.marginTop = '10px';
-                                
-        const authorEl = containerEl.createEl('p', {
-            text: 'Author: Travis (travis0115@163.com)'
+        settingDescEl.createEl('p', { text: 'Enabled: the window will be hidden regardless of whether it is empty.' });
+        settingDescEl.createEl('p', { text: 'Disabled: the window will be hidden only when the last tab is empty.' });
+        const hintEl = settingDescEl.createEl('p', {
+            text: 'If you are accustomed to using only one tab, enabling this option will be more in line with the logic of use.'
         });
-        authorEl.style.color = 'var(--text-muted)';
-        authorEl.style.textAlign = 'right';
-        authorEl.style.fontSize = 'var(--font-ui-small)';
+        hintEl.addClass('hide-window-setting-hint');
+
+        const authorEl = containerEl.createEl('p', {
+            text: 'Travis (travis0115@163.com)'
+        });
+        authorEl.addClass('hide-window-setting-author');
     }
 }

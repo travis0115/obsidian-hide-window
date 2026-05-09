@@ -1,0 +1,13 @@
+.hide-window-setting-desc {
+    margin-bottom: 10px;
+}
+
+.hide-window-setting-hint {
+    margin-top: 10px;
+}
+
+.hide-window-setting-author {
+    color: var(--text-muted);
+    text-align: right;
+    font-size: var(--font-ui-small);
+}

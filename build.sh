@@ -26,6 +26,7 @@ if [ $? -eq 0 ]; then
     cp main.js dist/obsidian-hide-window/
     cp manifest.json dist/obsidian-hide-window/
     cp versions.json dist/obsidian-hide-window/
+    cp styles.css dist/obsidian-hide-window/
     
     echo ""
     echo "✅ Build successful!"
@@ -34,6 +35,7 @@ if [ $? -eq 0 ]; then
     echo "   dist/obsidian-hide-window/"
     echo "   ├── main.js"
     echo "   ├── manifest.json"
+    echo "   ├── styles.css"
     echo "   └── versions.json"
     echo ""
     echo "📋 To install the plugin:"
