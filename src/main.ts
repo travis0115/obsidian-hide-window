@@ -86,12 +86,14 @@ export default class HideWindowPlugin extends Plugin {
         this.tabCountBefore = currentTabCount;
         // @ts-ignore - activeLeaf is deprecated but still works
         const activeLeaf = this.app.workspace.activeLeaf;
-        this.activeLeafTypeBefore = activeLeaf ? this.getLeafType(activeLeaf) : '';
-        // 关键修复:仅当 activeLeaf 属于主编辑区(根区域)时才更新 previousActiveLeaf,
-        // 避免点击侧边栏按钮导致 previousActiveLeaf 被侧边栏 leaf 污染,
-        // 进而影响后续对"标签页是否真被关闭"的判断。
+        // 关键修复:仅当 activeLeaf 属于主编辑区(根区域)时才更新 previousActiveLeaf 与 activeLeafTypeBefore,
+        // 避免点击侧边栏按钮(如搜索/标签)导致状态被侧边栏 leaf 污染。
+        // 尤其对 activeLeafTypeBefore: 若被侧边栏 leaf 污染为 'content',
+        // 在 hideOnAnyTabClose=false 的分支下会导致"关闭最后一个 empty 标签"时误判不隐藏,
+        // 出现"需要关闭两次才隐藏"的缺陷。
         if (activeLeaf && currentLeaves.indexOf(activeLeaf) !== -1) {
             this.previousActiveLeaf = activeLeaf;
+            this.activeLeafTypeBefore = this.getLeafType(activeLeaf);
         }
     }
 
